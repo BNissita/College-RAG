@@ -5,14 +5,30 @@ import importlib.util
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Callable
 
 
 SUPPORTED_FUNCTIONS = ("generate_response", "query", "get_response", "main")
+BASE_DIR = Path.cwd().resolve()
+
+
+def _resolve_backend_file(backend_file: str) -> tuple[Path | None, str | None]:
+    input_path = Path(backend_file).expanduser()
+    if input_path.is_absolute():
+        return None, "Use a relative path inside this project directory."
+    file_path = (BASE_DIR / input_path).resolve()
+    if BASE_DIR not in file_path.parents and file_path != BASE_DIR:
+        return None, "Backend file must be inside the project directory."
+    if file_path.suffix != ".py":
+        return None, "Backend file must be a .py file."
+    return file_path, None
 
 
 def run_backend(backend_file: str, prompt: str) -> str:
-    file_path = Path(backend_file).expanduser().resolve()
+    file_path, error = _resolve_backend_file(backend_file)
+    if error:
+        return error
+    if file_path is None:
+        return "Invalid backend file path."
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
@@ -26,8 +42,11 @@ def run_backend(backend_file: str, prompt: str) -> str:
     for function_name in SUPPORTED_FUNCTIONS:
         function = getattr(module, function_name, None)
         if callable(function):
-            result = function(prompt)
-            return str(result)
+            try:
+                result = function(prompt)
+                return str(result)
+            except Exception as exc:  # noqa: BLE001
+                return f"Backend execution failed: {exc}"
 
     supported = ", ".join(SUPPORTED_FUNCTIONS)
     return f"No supported function found. Expected one of: {supported}"
@@ -147,18 +166,21 @@ class FrontendHandler(BaseHTTPRequestHandler):
 
         content_length = int(self.headers.get("Content-Length", 0))
         payload = self.rfile.read(content_length)
-        data = json.loads(payload or "{}")
+        try:
+            data = json.loads(payload or "{}")
+        except json.JSONDecodeError:
+            self._respond(json.dumps({"result": "Invalid JSON payload."}), "application/json", 400)
+            return
         backend_file = str(data.get("backend_file", "")).strip()
         prompt = str(data.get("prompt", "")).strip()
         result = run_backend(backend_file, prompt) if backend_file and prompt else "Please provide a file path and prompt."
         self._respond(json.dumps({"result": result}), "application/json")
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000) -> HTTPServer:
+def run_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     server = HTTPServer((host, port), FrontendHandler)
     print(f"Frontend running on http://{host}:{port}")
     server.serve_forever()
-    return server
 
 
 if __name__ == "__main__":

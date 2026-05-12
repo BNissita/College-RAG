@@ -2,7 +2,7 @@
 
 ## Frontend
 
-This repository now includes a minimal web frontend in `/home/runner/work/College-RAG/College-RAG/frontend.py`.
+This repository now includes a minimal web frontend in `frontend.py`.
 
 Run it with:
 
