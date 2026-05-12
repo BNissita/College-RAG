@@ -3,19 +3,22 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from frontend import BASE_DIR, _allowed_backend_files, run_backend
+from frontend import BASE_DIR, _allowed_backend_files, _backend_options_html, run_backend
 
 
 class RunBackendTests(unittest.TestCase):
     def setUp(self) -> None:
         _allowed_backend_files.cache_clear()
+        _backend_options_html.cache_clear()
 
     def _write_backend(self, code: str) -> str:
         temp_dir = tempfile.TemporaryDirectory(dir=BASE_DIR)
+        self.temp_dir = temp_dir
         self.addCleanup(temp_dir.cleanup)
         file_path = Path(temp_dir.name) / "backend.py"
         file_path.write_text(textwrap.dedent(code), encoding="utf-8")
         _allowed_backend_files.cache_clear()
+        _backend_options_html.cache_clear()
         return str(file_path.relative_to(BASE_DIR))
 
     def test_rejects_unknown_file(self) -> None:

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import importlib.util
 import json
 import traceback
 from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from zlib import crc32
 
 
 SUPPORTED_FUNCTIONS = ("generate_response", "query", "get_response", "main")
@@ -32,6 +32,11 @@ def _resolve_backend_file(backend_file: str) -> tuple[Path | None, str | None]:
     return file_path, None
 
 
+@lru_cache(maxsize=1)
+def _backend_options_html() -> str:
+    return "".join(f'<option value="{html.escape(path)}">{html.escape(path)}</option>' for path in _allowed_backend_files())
+
+
 def run_backend(backend_file: str, prompt: str) -> str:
     file_path, error = _resolve_backend_file(backend_file)
     if error:
@@ -40,7 +45,8 @@ def run_backend(backend_file: str, prompt: str) -> str:
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
-    module_name = f"backend_module_{crc32(str(file_path).encode('utf-8')):08x}"
+    digest = hashlib.sha256(str(file_path).encode("utf-8")).hexdigest()[:16]
+    module_name = f"backend_module_{digest}"
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
         return f"Unable to load backend file: {file_path}"
@@ -64,7 +70,7 @@ def run_backend(backend_file: str, prompt: str) -> str:
 
 def build_page(result: str = "") -> str:
     escaped_result = html.escape(result)
-    options = "".join(f'<option value="{html.escape(path)}">{html.escape(path)}</option>' for path in _allowed_backend_files())
+    options = _backend_options_html()
     return f"""<!doctype html>
 <html lang="en">
   <head>
