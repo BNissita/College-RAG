@@ -8,12 +8,10 @@ from frontend import BASE_DIR, _allowed_backend_files, run_backend
 
 class RunBackendTests(unittest.TestCase):
     def setUp(self) -> None:
-        self._temp_dirs: list[tempfile.TemporaryDirectory[str]] = []
         _allowed_backend_files.cache_clear()
 
     def _write_backend(self, code: str) -> str:
         temp_dir = tempfile.TemporaryDirectory(dir=BASE_DIR)
-        self._temp_dirs.append(temp_dir)
         self.addCleanup(temp_dir.cleanup)
         file_path = Path(temp_dir.name) / "backend.py"
         file_path.write_text(textwrap.dedent(code), encoding="utf-8")

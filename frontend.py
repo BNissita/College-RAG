@@ -35,6 +35,8 @@ def run_backend(backend_file: str, prompt: str) -> str:
     file_path, error = _resolve_backend_file(backend_file)
     if error:
         return error
+    if file_path is None:
+        return "Invalid backend file."
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
