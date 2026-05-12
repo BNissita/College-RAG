@@ -45,7 +45,7 @@ def run_backend(backend_file: str, prompt: str) -> str:
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
-    digest = hashlib.sha256(str(file_path).encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(str(file_path).encode("utf-8")).hexdigest()
     module_name = f"backend_module_{digest}"
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
@@ -190,7 +190,10 @@ class FrontendHandler(BaseHTTPRequestHandler):
             return
         backend_file = str(data.get("backend_file", "")).strip()
         prompt = str(data.get("prompt", "")).strip()
-        result = run_backend(backend_file, prompt) if backend_file and prompt else "Please provide a file path and prompt."
+        if not backend_file or not prompt:
+            result = "Please provide a file path and prompt."
+        else:
+            result = run_backend(backend_file, prompt)
         self._respond(json.dumps({"result": result}), "application/json")
 
 

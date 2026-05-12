@@ -13,7 +13,6 @@ class RunBackendTests(unittest.TestCase):
 
     def _write_backend(self, code: str) -> str:
         temp_dir = tempfile.TemporaryDirectory(dir=BASE_DIR)
-        self.temp_dir = temp_dir
         self.addCleanup(temp_dir.cleanup)
         file_path = Path(temp_dir.name) / "backend.py"
         file_path.write_text(textwrap.dedent(code), encoding="utf-8")
