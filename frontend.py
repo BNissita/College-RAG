@@ -4,6 +4,7 @@ import html
 import importlib.util
 import json
 import traceback
+from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -12,6 +13,7 @@ SUPPORTED_FUNCTIONS = ("generate_response", "query", "get_response", "main")
 BASE_DIR = Path.cwd().resolve()
 
 
+@lru_cache(maxsize=1)
 def _allowed_backend_files() -> dict[str, Path]:
     files: dict[str, Path] = {}
     for file_path in BASE_DIR.rglob("*.py"):
@@ -33,8 +35,6 @@ def run_backend(backend_file: str, prompt: str) -> str:
     file_path, error = _resolve_backend_file(backend_file)
     if error:
         return error
-    if file_path is None:
-        return "Invalid backend file path."
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
