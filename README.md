@@ -12,7 +12,7 @@ python frontend.py
 
 Open `http://127.0.0.1:8000` and provide:
 
-- `Python file path`: path to your backend `.py` file
+- `Python file`: select a backend `.py` file discovered inside this project
 - `Question`: user prompt
 
 The frontend will load the provided file and call the first supported function found:

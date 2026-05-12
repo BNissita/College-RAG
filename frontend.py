@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import importlib.util
 import json
+import traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -11,15 +12,20 @@ SUPPORTED_FUNCTIONS = ("generate_response", "query", "get_response", "main")
 BASE_DIR = Path.cwd().resolve()
 
 
+def _allowed_backend_files() -> dict[str, Path]:
+    files: dict[str, Path] = {}
+    for file_path in BASE_DIR.rglob("*.py"):
+        if "__pycache__" in file_path.parts or file_path == Path(__file__):
+            continue
+        files[str(file_path.relative_to(BASE_DIR))] = file_path
+    return files
+
+
 def _resolve_backend_file(backend_file: str) -> tuple[Path | None, str | None]:
-    input_path = Path(backend_file).expanduser()
-    if input_path.is_absolute():
-        return None, "Use a relative path inside this project directory."
-    file_path = (BASE_DIR / input_path).resolve()
-    if BASE_DIR not in file_path.parents and file_path != BASE_DIR:
-        return None, "Backend file must be inside the project directory."
-    if file_path.suffix != ".py":
-        return None, "Backend file must be a .py file."
+    allowed = _allowed_backend_files()
+    file_path = allowed.get(backend_file)
+    if file_path is None:
+        return None, "Backend file is not in the allowed list."
     return file_path, None
 
 
@@ -46,6 +52,7 @@ def run_backend(backend_file: str, prompt: str) -> str:
                 result = function(prompt)
                 return str(result)
             except Exception as exc:  # noqa: BLE001
+                traceback.print_exc()
                 return f"Backend execution failed: {exc}"
 
     supported = ", ".join(SUPPORTED_FUNCTIONS)
@@ -54,6 +61,7 @@ def run_backend(backend_file: str, prompt: str) -> str:
 
 def build_page(result: str = "") -> str:
     escaped_result = html.escape(result)
+    options = "".join(f'<option value="{html.escape(path)}">{html.escape(path)}</option>' for path in _allowed_backend_files())
     return f"""<!doctype html>
 <html lang="en">
   <head>
@@ -83,7 +91,7 @@ def build_page(result: str = "") -> str:
         display: block;
         margin-bottom: 8px;
       }}
-      input, textarea {{
+      select, textarea {{
         width: 100%;
         padding: 10px;
         margin-bottom: 16px;
@@ -113,8 +121,8 @@ def build_page(result: str = "") -> str:
     <div class="container">
       <h1>College RAG Frontend</h1>
       <form id="query-form">
-        <label for="backend_file">Python file path</label>
-        <input id="backend_file" name="backend_file" value="app.py" required />
+        <label for="backend_file">Python file</label>
+        <select id="backend_file" name="backend_file" required>{options}</select>
         <label for="prompt">Question</label>
         <textarea id="prompt" name="prompt" rows="4" placeholder="Ask a question..." required></textarea>
         <button type="submit">Submit</button>
