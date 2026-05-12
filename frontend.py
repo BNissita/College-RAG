@@ -7,6 +7,7 @@ import traceback
 from functools import lru_cache
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from zlib import crc32
 
 
 SUPPORTED_FUNCTIONS = ("generate_response", "query", "get_response", "main")
@@ -39,7 +40,8 @@ def run_backend(backend_file: str, prompt: str) -> str:
     if not file_path.exists():
         return f"Backend file not found: {file_path}"
 
-    spec = importlib.util.spec_from_file_location("backend_module", file_path)
+    module_name = f"backend_module_{crc32(str(file_path).encode('utf-8')):08x}"
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
     if spec is None or spec.loader is None:
         return f"Unable to load backend file: {file_path}"
 
